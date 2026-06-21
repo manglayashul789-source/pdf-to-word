@@ -1,31 +1,39 @@
 import streamlit as st
-from pdf2docx import Converter
+import fitz  # PyMuPDF
+from docx import Document
+
+def pdf_to_word(pdf_file):
+    # Open PDF
+    doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
+    word_doc = Document()
+
+    # Extract text page by page
+    for page in doc:
+        text = page.get_text()
+        word_doc.add_paragraph(text)
+
+    return word_doc
 
 st.title("📄 PDF to Word Converter")
 
-# Upload PDF file
-upload_file = st.file_uploader("Upload a PDF file", type=["pdf"])
+uploaded_file = st.file_uploader("Upload PDF file", type=["pdf"])
 
-if upload_file is not None:
-    st.write("Uploaded File:", upload_file.name)
-
-    # Temporary save uploaded file
-    with open("temp.pdf", "wb") as f:
-        f.write(upload_file.read())
+if uploaded_file is not None:
+    st.write("Uploaded File:", uploaded_file.name)
 
     # Convert PDF to Word
-    output_file = "converted.docx"
-    cv = Converter("temp.pdf")
-    cv.convert(output_file, start=0, end=None)
-    cv.close()
+    word_doc = pdf_to_word(uploaded_file)
 
-    st.success("✅ Conversion complete!")
+    # Save to buffer
+    from io import BytesIO
+    buffer = BytesIO()
+    word_doc.save(buffer)
+    buffer.seek(0)
 
-    # Provide download button
-    with open(output_file, "rb") as f:
-        st.download_button(
-            label="⬇️ Download Word File",
-            data=f,
-            file_name="converted.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
+    # Download button
+    st.download_button(
+        label="⬇️ Download Word File",
+        data=buffer,
+        file_name=uploaded_file.name.replace(".pdf", ".docx"),
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
